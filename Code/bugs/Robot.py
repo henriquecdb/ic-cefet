@@ -9,7 +9,7 @@ from libs.utils import *
 
 class Robot:
 
-    def __init__(self, robotname='Pioneer_p3dx', L=0.331, r=0.09751, maxv=1.0, maxw=np.deg2rad(45), following=False):
+    def __init__(self, robotname='Pioneer_p3dx', L=0.331, r=0.09751, maxv=1.0, maxw=np.deg2rad(45), following=False, x=0, y=0, th=0):
         self.robotname = robotname
 
         # Específico do robô
@@ -22,9 +22,9 @@ class Robot:
         self._init_client_id()
         self._init_handles()
         self._init_sensors_handle()
-        self._init_values(4, 4, 0)
+        self._init_values(x, y, th) # angles in degrees
 
-        self.run()
+        #self.run()
 
     def _init_client_id(self):
         sim.simxFinish(-1)
@@ -72,7 +72,7 @@ class Robot:
         pass
 
     def run(self):
-        qgoal = np.array([-4, 4, np.deg2rad(90)])
+        #qgoal = np.array([-4, -1, np.deg2rad(90)])
         following = False
         err = np.inf
         it = 0
@@ -82,16 +82,12 @@ class Robot:
             returnCode, robotOri = sim.simxGetObjectOrientation(self.client_id, self.robotHandle, -1, sim.simx_opmode_oneshot_wait)  
             robotConfig = np.array([robotPos[0], robotPos[1], robotOri[2]])
 
-            dx, dy, dth = qgoal - robotConfig
+            dx, dy, dth = self.qgoal - robotConfig
             err = np.sqrt(dx**2 + dy**2)
             alpha = normalizeAngle(-robotConfig[2] + np.arctan2(dy,dx))
-            beta = normalizeAngle(qgoal[2] - np.arctan2(dy,dx))
+            beta = normalizeAngle(self.qgoal[2] - np.arctan2(dy,dx))
 
             print(robotConfig)
-
-            # Fazendo leitura dos sensores
-            returnCode, detected_front, point_front, *_ = sim.simxReadProximitySensor(self.client_id, self.sonar_front, sim.simx_opmode_oneshot_wait)
-            returnCode, detected_right, point_right, *_ = sim.simxReadProximitySensor(self.client_id, self.sonar_right, sim.simx_opmode_oneshot_wait)
             
             kr = 4 / 20
             ka = 8 / 20
@@ -109,23 +105,6 @@ class Robot:
             # Limit v,w to +/- max
             v = max(min(v, self.maxv), -self.maxv)
             w = max(min(w, self.maxw), -self.maxw) 
-
-            obstacle_in_front = (detected_front and np.linalg.norm(point_front) < .9)
-            obstacle_in_right = (detected_right and np.linalg.norm(point_right) < .9)
-
-            # Controle
-            if obstacle_in_front:
-                v = 0
-                w = np.deg2rad(30)
-                following = True
-            else: 
-                if obstacle_in_right:
-                    w = np.deg2rad(10)
-                elif collinear(-2.96, -2.5, robotConfig[0], robotConfig[1], qgoal[0], qgoal[1]):
-                    following = False
-                elif following:
-                    v = .1
-                    w = np.deg2rad(-30)
 
             # Cinemática Inversa
             wr = ((2.0 * v) + (w * self.L)) / (2.0 * self.r)

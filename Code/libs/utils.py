@@ -1,6 +1,10 @@
 import time
 import numpy as np
 
+
+def approx_Equal(x, y, tolerance=0.001):
+    return abs(x-y) <= 0.5 * tolerance * (x + y)
+
 def normalizeAngle(angle):
     return np.mod(angle+np.pi, 2*np.pi) - np.pi
 
