@@ -93,11 +93,11 @@ class Robot:
             ka = 8 / 20
             kb = -1.5 / 20
 
-            if abs(alpha) > np.pi/2:
-                kr = -kr       
+            #if abs(alpha) > np.pi/2:
+                # kr = -kr       
                 # Se não ajustar a direção muda
-                alpha = normalizeAngle(alpha - np.pi)
-                beta = normalizeAngle(beta - np.pi)
+            #    alpha = normalizeAngle(alpha - np.pi)
+            #    beta = normalizeAngle(beta - np.pi)
             
             v = kr * err
             w = ka * alpha + kb * beta
