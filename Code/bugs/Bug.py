@@ -26,10 +26,12 @@ class Bug(Robot):
     def _bug1(self):
         following = False
         err = np.inf
-        start = np.array([0, 0])
-        minDistance = np.array([0, 0])
-        minCoord = np.array([0, 0])
+        start = np.array([0., 0.])
+        minDistance = np.inf
+        minCoord = np.array([0., 0.])
         it = 0
+        go = False
+        firstObstacle = False
         while err > .05:
             # Pos, Ori
             returnCode, robotPos = sim.simxGetObjectPosition(
@@ -43,7 +45,7 @@ class Bug(Robot):
             alpha = normalizeAngle(-robotConfig[2] + np.arctan2(dy, dx))
             beta = normalizeAngle(self.qgoal[2] - np.arctan2(dy, dx))
 
-            print(f'{robotConfig}, start: {start}, {it}, minCoord: {minCoord}')
+            print(f'{robotConfig}, start: {start}, {it}, minCoord: {minCoord}, dist: {minDistance}, go: {go}')
 
             # Fazendo leitura dos sensores
             returnCode, detected_front, point_front, *_ = sim.simxReadProximitySensor(
@@ -69,27 +71,31 @@ class Bug(Robot):
 
             # Controle
             if obstacle_in_front:
-                if (it < 15):
-                    start[0] = robotPos[0]
-                    start[1] = robotPos[1]
+                if not firstObstacle:
+                    firstObstacle = True
+                    start[0] = robotConfig[0]
+                    start[1] = robotConfig[1]
+                    print(f'{robotPos}, start: {start}, {it}, minCoord: {minCoord}, dist: {minDistance}, go: {go}')
+                    #break
                 v = 0
                 w = np.deg2rad(30)
                 following = True
             else:
                 if obstacle_in_right:
                     w = np.deg2rad(10)
-                elif ((start[0] < robotPos[0] + .2) or (start[0] < robotPos[0] - .2) and it > 300):
-                    if ((start[1] < robotPos[1] + .2) or (start[1] < robotPos[1] - .2)):
-                        print("cheguei aqui")  # to-do
-                        break
-                elif (robotPos[0] == minCoord[0]) and (robotPos[1] == minCoord[1]) and it > 300: # to-do
+                elif (distanceBetweenPoints(robotPos[0:2], start[0:2]) < .5):
+                    print("cheguei aqui")  # to-do
+                    go = True
+                elif distanceBetweenPoints(robotPos, minCoord) < .3 and go == True: #it > 300: # to-do
                     following = False
                 elif following:
                     v = .1
                     w = np.deg2rad(-30)
-            if (distanceBetweenPoints(robotPos[0], self.qgoal[0], robotPos[1], self.qgoal[1]) < minDistance): # fix
+            minD = distanceBetweenPoints(robotPos[0:2], self.qgoal[0:2])
+            if (minD < minDistance): # fix
                 minCoord[0] = robotPos[0]
                 minCoord[1] = robotPos[1]
+                minDistance = minD
 
             # Cinemática Inversa
             wr = ((2.0 * v) + (w * self.L)) / (2.0 * self.r)

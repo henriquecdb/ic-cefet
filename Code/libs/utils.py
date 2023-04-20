@@ -20,5 +20,8 @@ def normalizeAngle(angle):
     return np.mod(angle+np.pi, 2*np.pi) - np.pi
 
 
-def distanceBetweenPoints(x1, y1, x2, y2):
-    return ((x2 - x1) ** 2 + (y2 - y1) ** 2)**(1/2)
+#def distanceBetweenPoints(x1, y1, x2, y2):
+#    return ((x2 - x1) ** 2 + (y2 - y1) ** 2)**(1/2)
+
+def distanceBetweenPoints(qRobot, qGoal):
+    return np.sqrt((qGoal[0] - qRobot[0]) ** 2 + (qGoal[1] - qRobot[1]) ** 2)
