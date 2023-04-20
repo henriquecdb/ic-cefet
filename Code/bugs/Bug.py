@@ -6,10 +6,10 @@ except:
 from bugs.Robot import *
 import numpy as np
 from libs.utils import *
-
+import math
 
 class Bug(Robot):
-    
+
     def __init__(self, x, y, th):
         Robot.__init__(self)
         self._init_values(x, y, th)
@@ -26,74 +26,89 @@ class Bug(Robot):
     def _bug1(self):
         following = False
         err = np.inf
-        start = np.zeros(2)
+        start = np.array([0, 0])
+        minDistance = np.array([0, 0])
+        minCoord = np.array([0, 0])
         it = 0
         while err > .05:
             # Pos, Ori
-            returnCode, robotPos = sim.simxGetObjectPosition(self.client_id, self.robotHandle, -1, sim.simx_opmode_oneshot_wait)
-            returnCode, robotOri = sim.simxGetObjectOrientation(self.client_id, self.robotHandle, -1, sim.simx_opmode_oneshot_wait)  
+            returnCode, robotPos = sim.simxGetObjectPosition(
+                self.client_id, self.robotHandle, -1, sim.simx_opmode_oneshot_wait)
+            returnCode, robotOri = sim.simxGetObjectOrientation(
+                self.client_id, self.robotHandle, -1, sim.simx_opmode_oneshot_wait)
             robotConfig = np.array([robotPos[0], robotPos[1], robotOri[2]])
 
             dx, dy, dth = self.qgoal - robotConfig
             err = np.sqrt(dx**2 + dy**2)
-            alpha = normalizeAngle(-robotConfig[2] + np.arctan2(dy,dx))
-            beta = normalizeAngle(self.qgoal[2] - np.arctan2(dy,dx))
+            alpha = normalizeAngle(-robotConfig[2] + np.arctan2(dy, dx))
+            beta = normalizeAngle(self.qgoal[2] - np.arctan2(dy, dx))
 
-            print(robotConfig)
+            print(f'{robotConfig}, start: {start}, {it}, minCoord: {minCoord}')
 
             # Fazendo leitura dos sensores
-            returnCode, detected_front, point_front, *_ = sim.simxReadProximitySensor(self.client_id, self.sonar_front, sim.simx_opmode_oneshot_wait)
-            returnCode, detected_right, point_right, *_ = sim.simxReadProximitySensor(self.client_id, self.sonar_right, sim.simx_opmode_oneshot_wait)
-            
-            kr = 4 / 20
-            ka = 8 / 20
-            kb = 0 #-1.5 / 20
+            returnCode, detected_front, point_front, *_ = sim.simxReadProximitySensor(
+                self.client_id, self.sonar_front, sim.simx_opmode_oneshot_wait)
+            returnCode, detected_right, point_right, *_ = sim.simxReadProximitySensor(
+                self.client_id, self.sonar_right, sim.simx_opmode_oneshot_wait)
 
-            #if abs(alpha) > np.pi/2:
-                # kr = -kr       
-                # Se não ajustar a direção muda
-            #    alpha = normalizeAngle(alpha - np.pi)
-            #    beta = normalizeAngle(beta - np.pi)
-            
+            kr = 2 / 20
+            ka = 8 / 20
+            kb = -1.5 / 20
+
             v = kr * err
             w = ka * alpha + kb * beta
 
             # Limit v,w to +/- max
             v = max(min(v, self.maxv), -self.maxv)
-            w = max(min(w, self.maxw), -self.maxw) 
+            w = max(min(w, self.maxw), -self.maxw)
 
-            obstacle_in_front = (detected_front and np.linalg.norm(point_front) < .9)
-            obstacle_in_right = (detected_right and np.linalg.norm(point_right) < .9)
+            obstacle_in_front = (
+                detected_front and np.linalg.norm(point_front) < .6)
+            obstacle_in_right = (
+                detected_right and np.linalg.norm(point_right) < .6)
 
             # Controle
             if obstacle_in_front:
-                start = robotPos[:2]
+                if (it < 15):
+                    start[0] = robotPos[0]
+                    start[1] = robotPos[1]
                 v = 0
                 w = np.deg2rad(30)
                 following = True
-            else: 
+            else:
                 if obstacle_in_right:
                     w = np.deg2rad(10)
-                elif start == robotPos[:2]: # to-do
-                    break
+                elif ((start[0] < robotPos[0] + .2) or (start[0] < robotPos[0] - .2) and it > 300):
+                    if ((start[1] < robotPos[1] + .2) or (start[1] < robotPos[1] - .2)):
+                        print("cheguei aqui")  # to-do
+                        break
+                elif (robotPos[0] == minCoord[0]) and (robotPos[1] == minCoord[1]) and it > 300: # to-do
+                    following = False
                 elif following:
                     v = .1
                     w = np.deg2rad(-30)
+            if (distanceBetweenPoints(robotPos[0], self.qgoal[0], robotPos[1], self.qgoal[1]) < minDistance): # fix
+                minCoord[0] = robotPos[0]
+                minCoord[1] = robotPos[1]
 
             # Cinemática Inversa
             wr = ((2.0 * v) + (w * self.L)) / (2.0 * self.r)
-            wl = ((2.0 * v) - (w * self.L)) / (2.0 * self.r)    
-            
+            wl = ((2.0 * v) - (w * self.L)) / (2.0 * self.r)
+
             # Enviando velocidades
-            sim.simxSetJointTargetVelocity(self.client_id, self.l_wheel, wl, sim.simx_opmode_oneshot_wait)
-            sim.simxSetJointTargetVelocity(self.client_id, self.r_wheel, wr, sim.simx_opmode_oneshot_wait)
+            sim.simxSetJointTargetVelocity(
+                self.client_id, self.l_wheel, wl, sim.simx_opmode_oneshot_wait)
+            sim.simxSetJointTargetVelocity(
+                self.client_id, self.r_wheel, wr, sim.simx_opmode_oneshot_wait)
             it += 1
-            #print(following)
+            # print(following)
             # print(robotPos)
             # print(robotOri)
-        
-        sim.simxSetJointTargetVelocity(self.client_id, self.l_wheel, 0, sim.simx_opmode_oneshot_wait)
-        sim.simxSetJointTargetVelocity(self.client_id, self.r_wheel, 0, sim.simx_opmode_oneshot_wait)
+
+        sim.simxSetJointTargetVelocity(
+            self.client_id, self.l_wheel, 0, sim.simx_opmode_oneshot_wait)
+        sim.simxSetJointTargetVelocity(
+            self.client_id, self.r_wheel, 0, sim.simx_opmode_oneshot_wait)
 
     def _bug2(self):
         following = False
@@ -101,47 +116,53 @@ class Bug(Robot):
         it = 0
         while err > .05:
             # Pos, Ori
-            returnCode, robotPos = sim.simxGetObjectPosition(self.client_id, self.robotHandle, -1, sim.simx_opmode_oneshot_wait)
-            returnCode, robotOri = sim.simxGetObjectOrientation(self.client_id, self.robotHandle, -1, sim.simx_opmode_oneshot_wait)  
+            returnCode, robotPos = sim.simxGetObjectPosition(
+                self.client_id, self.robotHandle, -1, sim.simx_opmode_oneshot_wait)
+            returnCode, robotOri = sim.simxGetObjectOrientation(
+                self.client_id, self.robotHandle, -1, sim.simx_opmode_oneshot_wait)
             robotConfig = np.array([robotPos[0], robotPos[1], robotOri[2]])
 
             dx, dy, dth = self.qgoal - robotConfig
             err = np.sqrt(dx**2 + dy**2)
-            alpha = normalizeAngle(-robotConfig[2] + np.arctan2(dy,dx))
-            beta = normalizeAngle(self.qgoal[2] - np.arctan2(dy,dx))
+            alpha = normalizeAngle(-robotConfig[2] + np.arctan2(dy, dx))
+            beta = normalizeAngle(self.qgoal[2] - np.arctan2(dy, dx))
 
             print(robotConfig)
 
             # Fazendo leitura dos sensores
-            returnCode, detected_front, point_front, *_ = sim.simxReadProximitySensor(self.client_id, self.sonar_front, sim.simx_opmode_oneshot_wait)
-            returnCode, detected_right, point_right, *_ = sim.simxReadProximitySensor(self.client_id, self.sonar_right, sim.simx_opmode_oneshot_wait)
-            
+            returnCode, detected_front, point_front, *_ = sim.simxReadProximitySensor(
+                self.client_id, self.sonar_front, sim.simx_opmode_oneshot_wait)
+            returnCode, detected_right, point_right, *_ = sim.simxReadProximitySensor(
+                self.client_id, self.sonar_right, sim.simx_opmode_oneshot_wait)
+
             kr = 4 / 20
             ka = 8 / 20
             kb = -1.5 / 20
 
-            #if abs(alpha) > np.pi/2:
-            #    kr = -kr       
-                # Se não ajustar a direção muda
+            # if abs(alpha) > np.pi/2:
+            #    kr = -kr
+            # Se não ajustar a direção muda
             #    alpha = normalizeAngle(alpha - np.pi)
             #    beta = normalizeAngle(beta - np.pi)
-            
+
             v = kr * err
             w = ka * alpha + kb * beta
 
             # Limit v,w to +/- max
             v = max(min(v, self.maxv), -self.maxv)
-            w = max(min(w, self.maxw), -self.maxw) 
+            w = max(min(w, self.maxw), -self.maxw)
 
-            obstacle_in_front = (detected_front and np.linalg.norm(point_front) < .9)
-            obstacle_in_right = (detected_right and np.linalg.norm(point_right) < .9)
+            obstacle_in_front = (
+                detected_front and np.linalg.norm(point_front) < .4)
+            obstacle_in_right = (
+                detected_right and np.linalg.norm(point_right) < .4)
 
             # Controle
             if obstacle_in_front:
                 v = 0
                 w = np.deg2rad(30)
                 following = True
-            else: 
+            else:
                 if obstacle_in_right:
                     w = np.deg2rad(10)
                 elif collinear(-2.96, -2.5, robotConfig[0], robotConfig[1], self.qgoal[0], self.qgoal[1]):
@@ -152,15 +173,19 @@ class Bug(Robot):
 
             # Cinemática Inversa
             wr = ((2.0 * v) + (w * self.L)) / (2.0 * self.r)
-            wl = ((2.0 * v) - (w * self.L)) / (2.0 * self.r)    
-            
+            wl = ((2.0 * v) - (w * self.L)) / (2.0 * self.r)
+
             # Enviando velocidades
-            sim.simxSetJointTargetVelocity(self.client_id, self.l_wheel, wl, sim.simx_opmode_oneshot_wait)
-            sim.simxSetJointTargetVelocity(self.client_id, self.r_wheel, wr, sim.simx_opmode_oneshot_wait)
+            sim.simxSetJointTargetVelocity(
+                self.client_id, self.l_wheel, wl, sim.simx_opmode_oneshot_wait)
+            sim.simxSetJointTargetVelocity(
+                self.client_id, self.r_wheel, wr, sim.simx_opmode_oneshot_wait)
             it += 1
             print(following)
             # print(robotPos)
             # print(robotOri)
-        
-        sim.simxSetJointTargetVelocity(self.client_id, self.l_wheel, 0, sim.simx_opmode_oneshot_wait)
-        sim.simxSetJointTargetVelocity(self.client_id, self.r_wheel, 0, sim.simx_opmode_oneshot_wait)
+
+        sim.simxSetJointTargetVelocity(
+            self.client_id, self.l_wheel, 0, sim.simx_opmode_oneshot_wait)
+        sim.simxSetJointTargetVelocity(
+            self.client_id, self.r_wheel, 0, sim.simx_opmode_oneshot_wait)
