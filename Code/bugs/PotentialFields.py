@@ -7,7 +7,41 @@ class PotentialFields(Robot):
         super().__init__(robotname, L, r, maxv, maxw, following, x, y, th)
 
     def _run(self):
-        pass
+        err = np.inf
+        while err > .05:
+            returnCode, robotPos = sim.simxGetObjectPosition(
+                self.client_id, self.robotHandle, -1, sim.simx_opmode_oneshot_wait)
+            returnCode, robotOri = sim.simxGetObjectOrientation(
+                self.client_id, self.robotHandle, -1, sim.simx_opmode_oneshot_wait)
+            robotConfig = np.array([robotPos[0], robotPos[1], robotOri[2]])
+
+            dx, dy, dth = self.qgoal - robotConfig
+            err = np.sqrt(dx**2 + dy**2)
+            alpha = normalizeAngle(-robotConfig[2] + np.arctan2(dy, dx))
+            beta = normalizeAngle(self.qgoal[2] - np.arctan2(dy, dx))
+
+            kr = 4 / 20
+            ka = 8 / 20
+            kb = -1.5 / 20
+
+            v = kr * err
+            w = ka * alpha + kb * beta
+
+            v = max(min(v, self.maxv), -self.maxv)
+            w = max(min(w, self.maxw), -self.maxw)
+
+            wr = ((2.0 * v) + (w * self.L)) / (2.0 * self.r)
+            wl = ((2.0 * v) - (w * self.L)) / (2.0 * self.r)
+
+            sim.simxSetJointTargetVelocity(
+                self.client_id, self.l_wheel, wl, sim.simx_opmode_oneshot_wait)
+            sim.simxSetJointTargetVelocity(
+                self.client_id, self.r_wheel, wr, sim.simx_opmode_oneshot_wait)
+
+        sim.simxSetJointTargetVelocity(
+            self.client_id, self.l_wheel, 0, sim.simx_opmode_oneshot_wait)
+        sim.simxSetJointTargetVelocity(
+            self.client_id, self.r_wheel, 0, sim.simx_opmode_oneshot_wait)
 
     def att_force(self, q, goal, katt=.01):
         return katt * (goal - q)
