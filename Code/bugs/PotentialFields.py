@@ -1,10 +1,11 @@
 import numpy as np
-from Robot import *
+from bugs.Robot import *
 
 
 class PotentialFields(Robot):
-    def __init__(self, robotname='Pioneer_p3dx', L=0.331, r=0.09751, maxv=1, maxw=np.deg2rad(45), following=False, x=0, y=0, th=0):
-        super().__init__(robotname, L, r, maxv, maxw, following, x, y, th)
+    def __init__(self, x, y, th):
+        Robot.__init__(self)
+        self._init_values(x, y, th)
 
     def _run(self):
         err = np.inf
@@ -24,7 +25,7 @@ class PotentialFields(Robot):
             ka = 8 / 20
             kb = -1.5 / 20
 
-            v = kr * err
+            v = self.att_force(err=err, katt=kr)
             w = ka * alpha + kb * beta
 
             v = max(min(v, self.maxv), -self.maxv)
@@ -43,8 +44,11 @@ class PotentialFields(Robot):
         sim.simxSetJointTargetVelocity(
             self.client_id, self.r_wheel, 0, sim.simx_opmode_oneshot_wait)
 
-    def att_force(self, q, goal, katt=.01):
-        return katt * (goal - q)
+    def calc_potential_field(self):
+        pass
+
+    def att_force(self, err, katt=.01):
+        return 0.5 * katt * err
 
     def att_force2(self, q, goal, k=2):
         f = k * (goal - q)
@@ -63,3 +67,25 @@ class PotentialFields(Robot):
         rep[invalid, :] = 0
 
         return krep * rep
+    
+    def calc_repulsive_potential(x, y, ox, oy, rr):
+        # search nearest obstacle
+        minid = -1
+        dmin = float("inf")
+        for i, _ in enumerate(ox):
+            d = np.hypot(x - ox[i], y - oy[i])
+            if dmin >= d:
+                dmin = d
+                minid = i
+
+        # calc repulsive potential
+        dq = np.hypot(x - ox[minid], y - oy[minid])
+
+        if dq <= rr:
+            if dq <= 0.1:
+                dq = 0.1
+
+            return 0.5 * 100.0 * (1.0 / dq - 1.0 / rr) ** 2 # ETA is repulsive potential gain ETA = 100.0
+        else:
+            return 0.0
+    
