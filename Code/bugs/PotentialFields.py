@@ -6,6 +6,7 @@ class PotentialFields(Robot):
     def __init__(self, x, y, th):
         Robot.__init__(self)
         self._init_values(x, y, th)
+        self.AREA_WIDTH = 10
 
     def _run(self):
         err = np.inf
@@ -25,8 +26,15 @@ class PotentialFields(Robot):
             ka = 8 / 20
             kb = -1.5 / 20
 
-            v = self.att_force(err=err, katt=kr)
+            obs = [0,0,1]
+            att = self.att_force(robotConfig, self.qgoal, .1)
+            rep = self.rep_force(robotConfig, obs, R=5, krep=1)
+            v = kr * np.hypot(att[0] + rep[0], att[1] + rep[1])
             w = ka * alpha + kb * beta
+
+            #print(att[0], att[1])
+            #print(rep[0], rep[1])
+            print(f'att:{self.att_force(robotConfig, self.qgoal)}, rep:{self.rep_force(robotConfig, obs)}')
 
             v = max(min(v, self.maxv), -self.maxv)
             w = max(min(w, self.maxw), -self.maxw)
@@ -44,48 +52,17 @@ class PotentialFields(Robot):
         sim.simxSetJointTargetVelocity(
             self.client_id, self.r_wheel, 0, sim.simx_opmode_oneshot_wait)
 
-    def calc_potential_field(self):
-        pass
 
-    def att_force(self, err, katt=.01):
-        return 0.5 * katt * err
+    def att_force(self, q, goal, katt=.01):
+        return katt * (goal[:2] - q[:2])
 
-    def att_force2(self, q, goal, k=2):
-        f = k * (goal - q)
-        f[:, 0] = 1
-        return f
 
-    def rep_force(self, q, obs, R=3, krep=.1):
-        # Obstacle: (x, y, r)
-        v = q - obs[0:2]
-        d = np.linalg.norm(v, axis=1) - obs[2]
-        d = d.reshape((len(v), 1))
-
-        rep = (1/d**2)*((1/R))*(v/d)
-
-        invalid = np.squeeze(d > R)
-        rep[invalid, :] = 0
-
-        return krep * rep
-    
-    def calc_repulsive_potential(x, y, ox, oy, rr):
-        # search nearest obstacle
-        minid = -1
-        dmin = float("inf")
-        for i, _ in enumerate(ox):
-            d = np.hypot(x - ox[i], y - oy[i])
-            if dmin >= d:
-                dmin = d
-                minid = i
-
-        # calc repulsive potential
-        dq = np.hypot(x - ox[minid], y - oy[minid])
-
-        if dq <= rr:
-            if dq <= 0.1:
-                dq = 0.1
-
-            return 0.5 * 100.0 * (1.0 / dq - 1.0 / rr) ** 2 # ETA is repulsive potential gain ETA = 100.0
+    def rep_force(self, q, obs, R=3, krep=100):
+        p0 = R
+        pi = np.hypot(q[0] - obs[0], q[1] - obs[1])
+        if (pi <= p0):
+            return ((1/pi) - (1/p0)) * krep/(pi**2) * (q[0:2] - obs[0:2])/pi
         else:
-            return 0.0
+            return [0, 0]
+
     

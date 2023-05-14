@@ -8,4 +8,4 @@ def main(x, y, th):
 
 
 if __name__ == '__main__':
-    main(3, -4, 0)
+    main(3, 0, 0)
