@@ -1,7 +1,6 @@
 import numpy as np
 from bugs.Robot import *
 
-
 class PotentialFields(Robot):
     def __init__(self, x, y, th):
         Robot.__init__(self)
@@ -19,22 +18,28 @@ class PotentialFields(Robot):
 
             dx, dy, dth = self.qgoal - robotConfig
             err = np.sqrt(dx**2 + dy**2)
-            alpha = normalizeAngle(-robotConfig[2] + np.arctan2(dy, dx))
-            beta = normalizeAngle(self.qgoal[2] - np.arctan2(dy, dx))
-
-            kr = 4 / 20
-            ka = 8 / 20
-            kb = -1.5 / 20
+            #alpha = normalizeAngle(-robotConfig[2] + np.arctan2(dy, dx))
+            #beta = normalizeAngle(self.qgoal[2] - np.arctan2(dy, dx))
 
             obs = [0,0,1]
             att = self.att_force(robotConfig, self.qgoal, .1)
-            rep = self.rep_force(robotConfig, obs, R=5, krep=1)
-            v = kr * np.hypot(att[0] + rep[0], att[1] + rep[1])
+            rep = self.rep_force(robotConfig, obs, R=3, krep=1)
+            result = att + rep
+
+            alpha = normalizeAngle(-robotConfig[2] + np.arctan2(result[1], result[0]))
+            beta = normalizeAngle(self.qgoal[2] - np.arctan2(result[1], result[0]))
+
+            kr = 12 / 20
+            ka = 12 / 20
+            kb = -1.5 / 20
+
+            v = kr * np.hypot(result[0], result[1])
             w = ka * alpha + kb * beta
 
             #print(att[0], att[1])
             #print(rep[0], rep[1])
             print(f'att:{self.att_force(robotConfig, self.qgoal)}, rep:{self.rep_force(robotConfig, obs)}')
+            print(f'res:{result}')
 
             v = max(min(v, self.maxv), -self.maxv)
             w = max(min(w, self.maxw), -self.maxw)
@@ -57,7 +62,7 @@ class PotentialFields(Robot):
         return katt * (goal[:2] - q[:2])
 
 
-    def rep_force(self, q, obs, R=3, krep=100):
+    def rep_force(self, q, obs, R=4, krep=100):
         p0 = R
         pi = np.hypot(q[0] - obs[0], q[1] - obs[1])
         if (pi <= p0):
