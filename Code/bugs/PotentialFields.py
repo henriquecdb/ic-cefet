@@ -5,10 +5,11 @@ class PotentialFields(Robot):
     def __init__(self, x, y, th):
         Robot.__init__(self)
         self._init_values(x, y, th)
-        self.AREA_WIDTH = 10
+        self.R = 3
 
     def _run(self):
         err = np.inf
+        #obs = [[0.1,0.1,1], [3,-3,1], [-3,3,1]]
         while err > .05:
             returnCode, robotPos = sim.simxGetObjectPosition(
                 self.client_id, self.robotHandle, -1, sim.simx_opmode_oneshot_wait)
@@ -24,6 +25,7 @@ class PotentialFields(Robot):
             obs = [0,0,1]
             att = self.att_force(robotConfig, self.qgoal, .1)
             rep = self.rep_force(robotConfig, obs, R=3, krep=1)
+            #rep = self.check_obs(robotConfig, obs)
             result = att + rep
 
             alpha = normalizeAngle(-robotConfig[2] + np.arctan2(result[1], result[0]))
@@ -69,5 +71,13 @@ class PotentialFields(Robot):
             return ((1/pi) - (1/p0)) * krep/(pi**2) * (q[0:2] - obs[0:2])/pi
         else:
             return [0, 0]
-
+        
     
+    def check_obs(self, robotConfig, obs):
+        rep_result = [0, 0]
+        for i, _ in enumerate(obs):
+            if (np.hypot(robotConfig[0] - obs[i][0], robotConfig[1] - obs[i][1]) <= self.R):
+                aux = [obs[i][0], obs[i][1], obs[i][2]]
+                rep_result += self.rep_force(robotConfig, aux, self.R, 1)
+                #print(rep_result)
+        return rep_result
