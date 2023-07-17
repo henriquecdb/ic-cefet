@@ -1,5 +1,5 @@
 import numpy as np
-from bugs.Robot import *
+from src.Robot import *
 
 class PotentialFields(Robot):
     def __init__(self, x, y, th):

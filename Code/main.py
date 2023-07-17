@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from bugs.PotentialFields import *
+from src.PotentialFields import *
 
 
 def main(x, y, th):
