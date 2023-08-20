@@ -1,12 +1,11 @@
 #!/usr/bin/env python
-from src.PotentialFields import *
+from src.Leader import *
 
 
 def main(x, y, th):
-    new_potential = PotentialFields(x, y, th)
-    new_potential._run()
+    new_robot = Leader(x, y, th)
+    new_robot.run()
 
 
 if __name__ == '__main__':
-    # x, y, th
-    main(0, 4, 0)
+    main(2, 4, 0)
