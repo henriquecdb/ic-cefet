@@ -6,7 +6,7 @@ from src.PotentialFields import *
 
 class Leader(Robot):
     def __init__(self, x, y, th):
-        Robot.__init__(self)
+        Robot.__init__(self, robotname="Pioneer_p3dx_2")
         self._init_values(x, y, th)
 
     def _follow(self, leader):
