@@ -9,7 +9,7 @@ from libs.utils import *
 
 
 class Robot:
-    def __init__(self, robotname='Pioneer_p3dx', L=0.331, r=0.09751, maxv=1.0, maxw=np.deg2rad(45), following=False, x=0, y=0, th=0):
+    def __init__(self, robotname='Pioneer_p3dx', L=0.331, r=0.09751, maxv=1.0, maxw=np.deg2rad(45), following=False, go=False, x=0, y=0, th=0):
         self.robotname = robotname
         # Específico do robô
         self.L = L
@@ -21,7 +21,8 @@ class Robot:
         self._init_client_id()
         self._init_handles()
         self._init_sensors_handle()
-        self._init_values(x, y, th)  # angles in degrees
+        if (go):
+            self._init_values(x, y, th)  # angles in degrees
 
         # self.run()
 
