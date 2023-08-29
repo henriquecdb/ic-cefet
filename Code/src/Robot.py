@@ -9,7 +9,7 @@ from libs.utils import *
 
 
 class Robot:
-    def __init__(self, robotname='Pioneer_p3dx', L=0.331, r=0.09751, maxv=1.0, maxw=np.deg2rad(45), following=False, go=False, x=0, y=0, th=0):
+    def __init__(self, robotname='Pioneer_p3dx', L=0.331, r=0.09751, maxv=1.0, maxw=np.deg2rad(45), following=False, go=False, leader=False, x=0, y=0, th=0):
         self.robotname = robotname
         # Específico do robô
         self.L = L
@@ -17,6 +17,7 @@ class Robot:
         self.maxv = maxv
         self.maxw = maxw
         self.following = following
+        self.leader = leader
 
         self._init_client_id()
         self._init_handles()
@@ -40,18 +41,28 @@ class Robot:
         self._init_wheels_handle()
 
     def _init_robot_handle(self):
-        _, self.robotHandle = sim.simxGetObjectHandle(
-            self.client_id, self.robotname, sim.simx_opmode_oneshot_wait)
+        if (self.leader):
+            _, self.robotHandle = sim.simxGetObjectHandle(
+                self.client_id, "Pioneer_p3dx_2#0", sim.simx_opmode_oneshot_wait)
+        else:
+            _, self.robotHandle = sim.simxGetObjectHandle(
+                self.client_id, self.robotname, sim.simx_opmode_oneshot_wait)
 
     def _init_target_handle(self):
         _, goalFrame = sim.simxGetObjectHandle(
             self.client_id, 'Goal', sim.simx_opmode_oneshot_wait)
 
     def _init_wheels_handle(self):
-        _, self.l_wheel = sim.simxGetObjectHandle(
-            self.client_id, self.robotname + '_leftMotor', sim.simx_opmode_oneshot_wait)
-        _, self.r_wheel = sim.simxGetObjectHandle(
-            self.client_id, self.robotname + '_rightMotor', sim.simx_opmode_oneshot_wait)
+        if (self.leader):
+            _, self.l_wheel = sim.simxGetObjectHandle(
+                self.client_id, self.robotname + '_leftMotor#0', sim.simx_opmode_oneshot_wait)
+            _, self.r_wheel = sim.simxGetObjectHandle(
+                self.client_id, self.robotname + '_rightMotor#0', sim.simx_opmode_oneshot_wait)
+        else:
+            _, self.l_wheel = sim.simxGetObjectHandle(
+                self.client_id, self.robotname + '_leftMotor', sim.simx_opmode_oneshot_wait)
+            _, self.r_wheel = sim.simxGetObjectHandle(
+                self.client_id, self.robotname + '_rightMotor', sim.simx_opmode_oneshot_wait)
 
     def _init_sensors_handle(self):
         _, self.sonar_front = sim.simxGetObjectHandle(
@@ -89,7 +100,7 @@ class Robot:
             alpha = normalizeAngle(-robotConfig[2] + np.arctan2(dy, dx))
             beta = normalizeAngle(self.qgoal[2] - np.arctan2(dy, dx))
 
-            print(robotConfig)
+            # print(robotConfig)
 
             kr = 4 / 20
             ka = 8 / 20

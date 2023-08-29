@@ -3,15 +3,19 @@ from src.Robot import *
 
 
 class Follower(Robot):
-    def __init__(self):
+    def __init__(self, leader):
         Robot.__init__(self)
-        #self._init_values(x, y, th)
+        # self._init_values(x, y, th)
+        self._follow(leader)
 
     def _follow(self, leader):
-        err_threshold = 0.1  # Limite de erro para parar de seguir
+        err = np.inf
+        err_threshold = 0.1
         kr = 4 / 20
         ka = 8 / 20
         kb = -1.5 / 20
+
+        leader.run()
 
         while True:
             # Obter a posição do líder
@@ -31,8 +35,7 @@ class Follower(Robot):
             print(robotConfig, leaderConfig)
 
             # Calcule o erro de posição
-            #dx, dy, dth = leaderConfig - robotConfig
-            dx, dy, dth = robotConfig - leaderConfig
+            dx, dy, dth = leaderConfig - robotConfig
             err = np.sqrt(dx**2 + dy**2)
 
             # Calcule os ângulos alpha e beta
