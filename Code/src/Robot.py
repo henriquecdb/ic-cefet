@@ -137,3 +137,56 @@ class Robot:
             self.client_id, self.l_wheel, 0, sim.simx_opmode_oneshot_wait)
         sim.simxSetJointTargetVelocity(
             self.client_id, self.r_wheel, 0, sim.simx_opmode_oneshot_wait)
+
+    def _run_step(self):
+        err = np.inf
+        # Pos, Ori
+        _, robotPos = sim.simxGetObjectPosition(
+            self.client_id, self.robotHandle, -1, sim.simx_opmode_oneshot_wait)
+        _, robotOri = sim.simxGetObjectOrientation(
+            self.client_id, self.robotHandle, -1, sim.simx_opmode_oneshot_wait)
+        robotConfig = np.array([robotPos[0], robotPos[1], robotOri[2]])
+
+        dx, dy, dth = self.qgoal - robotConfig
+        err = np.sqrt(dx**2 + dy**2)
+        alpha = normalizeAngle(-robotConfig[2] + np.arctan2(dy, dx))
+        beta = normalizeAngle(self.qgoal[2] - np.arctan2(dy, dx))
+
+        # print(robotConfig)
+        print(err)
+
+        kr = 4 / 20
+        ka = 8 / 20
+        kb = -1.5 / 20
+
+        # if abs(alpha) > np.pi/2:
+        # kr = -kr
+        # Se não ajustar a direção muda
+        #    alpha = normalizeAngle(alpha - np.pi)
+        #    beta = normalizeAngle(beta - np.pi)
+
+        v = kr * err
+        w = ka * alpha + kb * beta
+
+        # Limit v,w to +/- max
+        v = max(min(v, self.maxv), -self.maxv)
+        w = max(min(w, self.maxw), -self.maxw)
+
+        # Cinemática Inversa
+        wr = ((2.0 * v) + (w * self.L)) / (2.0 * self.r)
+        wl = ((2.0 * v) - (w * self.L)) / (2.0 * self.r)
+
+        # Enviando velocidades
+        sim.simxSetJointTargetVelocity(
+            self.client_id, self.l_wheel, wl, sim.simx_opmode_oneshot_wait)
+        sim.simxSetJointTargetVelocity(
+            self.client_id, self.r_wheel, wr, sim.simx_opmode_oneshot_wait)
+        
+        if (err < .2):
+            return True
+
+    def _stop(self):
+        sim.simxSetJointTargetVelocity(
+            self.client_id, self.l_wheel, 0, sim.simx_opmode_oneshot_wait)
+        sim.simxSetJointTargetVelocity(
+            self.client_id, self.r_wheel, 0, sim.simx_opmode_oneshot_wait)
