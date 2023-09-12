@@ -1,18 +1,21 @@
 #!/usr/bin/env python
-
-from bugs.Bug import *
-from bugs.Robot import *
-import numpy as np
-import sys
+from src.Follower import *
 
 
-def main(x, y, th):
-    # bug = Robot('Pioneer_p3dx', 0.331, 0.09751, 1., np.deg2rad(45), False, 3, 3)
-    # bug.run()
+def main():
+    robot_leader = Robot(robotname="Pioneer_p3dx_2", leader=True, maxv=0.3)
+    robot_leader.qgoal = [-4, 3, 0]
+    robot_follower = Follower(robot_leader)
 
-    newBug = Bug(x, y, th)
-    newBug._bug1()
-    # newBug._bug2()
+    while (True):
+        r1 = robot_leader._run_step()
+        r2 = robot_follower._follow_step(robot_leader)
+
+        if (r1 and r2):
+            break
+    
+    robot_leader._stop()
+    robot_follower._stop()
 
 if __name__ == '__main__':
-    main(sys.argv[1], sys.argv[2], sys.argv[3])
+    main()

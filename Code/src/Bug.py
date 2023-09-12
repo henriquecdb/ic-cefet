@@ -3,7 +3,7 @@ try:
 except:
     print('"sim.py" could not be imported')
 
-from bugs.Robot import *
+from src.Robot import *
 import numpy as np
 from libs.utils import *
 import math

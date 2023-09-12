@@ -1,5 +1,6 @@
 import time
 import numpy as np
+from math import *
 
 
 def approx_Equal(x, y, tolerance=0.001):
@@ -20,8 +21,9 @@ def normalizeAngle(angle):
     return np.mod(angle+np.pi, 2*np.pi) - np.pi
 
 
-#def distanceBetweenPoints(x1, y1, x2, y2):
-#    return ((x2 - x1) ** 2 + (y2 - y1) ** 2)**(1/2)
+def xdot(th, r, L):
+    return np.array([r*cos(th)/2, r*cos(th)/2], [r*sin(th)/2, r*sin(th)/2], [r/L, -r/L])
+
 
 def distanceBetweenPoints(qRobot, qGoal):
     return np.sqrt((qGoal[0] - qRobot[0]) ** 2 + (qGoal[1] - qRobot[1]) ** 2)
