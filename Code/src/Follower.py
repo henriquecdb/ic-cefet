@@ -1,10 +1,10 @@
 import numpy as np
-from src.Robot import *
+from src.RobotMQ import *
 
 
-class Follower(Robot):
-    def __init__(self, leader):
-        Robot.__init__(self, maxv=0.3)
+class Follower(RobotMQ):
+    def __init__(self, robotname, maxv):
+        RobotMQ.__init__(self, robotname, maxv=maxv)
         # self._init_values(x, y, th)
         # self._follow(leader)
 
