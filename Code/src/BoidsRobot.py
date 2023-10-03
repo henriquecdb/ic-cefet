@@ -20,8 +20,8 @@ class BoidsRobot(RobotMQ):
         self.visualRange = 40
         self.protectedRange = 8
         self.centeringfactor = 0.5 # 0.0005
-        self.avoidfactor = 2 # 0.05
-        self.matchingfactor = 3 # 0.05
+        self.avoidfactor = .5 # 0.05
+        self.matchingfactor = .5 # 0.05
         self.maxspeed = 6
         self.minspeed = 3
 
@@ -42,9 +42,12 @@ class BoidsRobot(RobotMQ):
 
     def separation(self):
         # Separação: Steer to avoid crowding local flockmates
-        avg_position = np.mean([boid.position for boid in self.boids])
-        cohesion_force = self.centeringfactor * (avg_position - self.position)
-        return cohesion_force
+        separation_force = np.zeros(2)
+        for boid in self.boids:
+            if np.linalg.norm(boid.position - self.position) < self.protectedRange:  
+                separation_force += (self.position - boid.position)
+        separation_force *= self.avoidfactor
+        return separation_force
 
     def goal_force(self):
         # Força do objetivo: Steer to move toward the goal
