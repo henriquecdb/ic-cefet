@@ -57,11 +57,21 @@ class BoidsRobot(RobotMQ):
     def boundary_force(self):
         # Força da borda: Steer to move away from the boundary
         boundary_force = np.zeros(2)
-        for i in range(2):
-            if self.position[i] < -self.boundary[i]/2:
-                boundary_force[i] = 1.0
-            elif self.position[i] > self.boundary[i]/2:
-                boundary_force[i] = -1.0
+        
+        left_margin = -self.boundary[0]/2
+        right_margin = self.boundary[0]/2
+        top_margin = -self.boundary[1]/2
+        bottom_margin = self.boundary[1]/2
+
+        if self.position[0] < left_margin:
+            boundary_force[0] += self.turnfactor
+        if self.position[0] > right_margin:
+            boundary_force[0] -= self.turnfactor
+        if self.position[1] > bottom_margin:
+            boundary_force[1] -= self.turnfactor
+        if self.position[1] < top_margin:
+            boundary_force[1] += self.turnfactor
+
         return boundary_force
 
     def _run_step(self):
