@@ -3,9 +3,9 @@ from src.RobotMQ import *
 
 
 class BoidsRobot(RobotMQ):
+    boids = []
     def __init__(self, robotname='Pioneer_p3dx', L=0.331, r=0.09751, maxv=1, maxw=np.deg2rad(45), leader=False):
         super().__init__(robotname, L, r, maxv, maxw, leader)
-        self.boids = []
 
         _, robotPos = sim.simxGetObjectPosition(
         self.client_id, self.robotHandle, -1, sim.simx_opmode_oneshot_wait)
@@ -17,35 +17,38 @@ class BoidsRobot(RobotMQ):
 
         # Valores sugeridos
         self.turnfactor = .5 # 0.2
-        self.visualRange = 40
-        self.protectedRange = 8
+        self.visualRange = 10
+        self.protectedRange = 4
         self.centeringfactor = 0.5 # 0.0005
         self.avoidfactor = .5 # 0.05
         self.matchingfactor = .5 # 0.05
         self.maxspeed = 6
         self.minspeed = 3
 
-    def add_boid(self, boid):
-        self.boids.append(boid)
+        # Adicione o robô à lista de "boids" da simulação
+        BoidsRobot.add_boid(self)
+
+    def add_boid(boid):
+        BoidsRobot.boids.append(boid)
 
     def alignment(self):
         # Alinhamento: Steer towards the average heading of local flockmates
-        avg_heading = np.mean([boid.velocity for boid in self.boids])
+        avg_heading = np.mean([boid.velocity for boid in BoidsRobot.boids])
         alignment_force = self.turnfactor * (avg_heading - self.velocity)
         return alignment_force
 
     def cohesion(self):
         # Coesão: Steer to move toward the average position of local flockmates
-        avg_position = np.mean([boid.position for boid in self.boids])
+        avg_position = np.mean([boid.position for boid in BoidsRobot.boids])
         cohesion_force = self.centeringfactor * (avg_position - self.position)
         return cohesion_force
 
     def separation(self):
         # Separação: Steer to avoid crowding local flockmates
         separation_force = np.zeros(2)
-        for boid in self.boids:
+        for boid in BoidsRobot.boids:
             if np.linalg.norm(boid.position - self.position) < self.protectedRange:  
-                separation_force += (self.position - boid.position)
+                separation_force += self.protectedRange - (self.position - boid.position)
         separation_force *= self.avoidfactor
         return separation_force
 
