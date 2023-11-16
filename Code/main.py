@@ -15,6 +15,8 @@ def main():
         # Defina o mesmo objetivo para cada robô
         robots[i].qgoal = goal
 
+    robots[1].leader = True
+
     # Execute o algoritmo Boids para cada robô
     while True:
         if all(np.linalg.norm(robot.position - goal) < 0.01 for robot in robots):

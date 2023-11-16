@@ -12,18 +12,18 @@ class BoidsRobot(RobotMQ):
         _, self.robotPos = sim.simxGetObjectPosition(
             self.client_id, self.robotHandle, -1, sim.simx_opmode_oneshot_wait)
 
-        self.qgoal = np.zeros(2)
+        self.qgoal = np.array([.0,.0])
         self.position = np.array([self.robotPos[0], self.robotPos[1]])
         self.boundary = np.array([25.0, 25.0])
         self.velocity = np.zeros(2)
 
         # Valores sugeridos
-        self.turnfactor = .5  # 0.2
+        self.turnfactor = 0.2 #.5  # 0.2
         self.visualRange = 10
         self.protectedRange = 3
-        self.centeringfactor = 1  # 0.0005
-        self.avoidfactor = 2  # 0.05
-        self.matchingfactor = 1  # 0.05
+        self.centeringfactor = 0.0005 # 1  # 0.0005
+        self.avoidfactor = 0.05 # 2  # 0.05
+        self.matchingfactor = 0.05 # 1  # 0.05
 
         # Adicione o robô à lista de "boids" da simulação
         BoidsRobot.add_boid(self)
@@ -35,20 +35,32 @@ class BoidsRobot(RobotMQ):
         # Conta o número de boids vizinhos dentro do alcance visível
         neighboring_boids = 0
         for boid in BoidsRobot.boids:
-            if np.linalg.norm(boid.position - self.position) < self.visualRange:
+            dist = np.linalg.norm(boid.position - self.position)
+            if dist < self.visualRange and dist != 0:
                 neighboring_boids += 1
         return neighboring_boids
 
     def alignment(self):
         # Alinhamento: Steer towards the average heading of local flockmates
-        avg_heading = np.mean([boid.velocity for boid in BoidsRobot.boids])
-        alignment_force = self.turnfactor * \
-            (avg_heading - self.velocity)
+        visualRange = []
+        for boid in BoidsRobot.boids:
+            dist = np.linalg.norm(boid.position - self.position)
+            if dist < self.visualRange and dist != 0:
+                visualRange.append(boid)
+
+        avg_heading = np.mean([boid.velocity for boid in visualRange])
+        alignment_force = self.turnfactor * (avg_heading - self.velocity)
         return alignment_force
 
     def cohesion(self):
         # Coesão: Steer to move toward the average position of local flockmates
-        avg_position = np.mean([boid.position for boid in BoidsRobot.boids])
+        visualRange = []
+        for boid in BoidsRobot.boids:
+            dist = np.linalg.norm(self.position - boid.position)
+            if dist < self.visualRange and dist != 0:
+                visualRange.append(boid)
+        
+        avg_position = np.mean([boid.position for boid in visualRange])
         cohesion_force = self.centeringfactor * (avg_position - self.position)
         return cohesion_force
 
@@ -56,9 +68,9 @@ class BoidsRobot(RobotMQ):
         # Separação: Steer to avoid crowding local flockmates
         separation_force = np.zeros(2)
         for boid in BoidsRobot.boids:
-            if np.linalg.norm(boid.position - self.position) < self.protectedRange:
-                separation_force += self.protectedRange - \
-                    (self.position - boid.position)
+            dist = np.linalg.norm(self.position - boid.position)
+            if dist < self.protectedRange and dist != 0:
+                separation_force += self.position - boid.position
         separation_force *= self.avoidfactor
         return separation_force
 
@@ -95,6 +107,8 @@ class BoidsRobot(RobotMQ):
 
         # Atualize a velocidade e a posição do robô com base nas forças calculadas
         total_force = alignment_force + cohesion_force + separation_force + boundary_force
+        if self.leader:
+            total_force += [2.0, 3.0]
 
         # Limita a magnitude da total_force a um valor máximo
         max_force_magnitude = 10.0
